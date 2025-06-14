@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#007bff">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <title>Story App</title>
+  <link rel="stylesheet" href="/src/styles/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Lewati ke konten</a>
+  <header id="header" class="header">
+    <nav>
+      <ul class="menu-items">
+        <li><a href="#/"><i class="fas fa-home"></i>Home</a></li>
+        <li><a href="#/stories"><i class="fas fa-book"></i> Stories</a></li>
+        <li id="nav-add-story" style="display: none;"><a href="#/stories/add"><i class="fas fa-pencil-alt"></i> Add Story</a></li>
+        <li id="nav-login" style="display: none;"><a href="#/login"><i class="fas fa-sign-in-alt"></i> Login</a></li>
+        <li id="nav-register" style="display: none;"><a href="#/register"><i class="fas fa-user-plus"></i> Register</a></li>
+        <li id="nav-subscribe" style="display: none;"><a href="#" id="subscribePush"><i class="fas fa-bell"></i> Subscribe Notification</a></li>
+        <li id="nav-unsubscribe" style="display: none;"><a href="#" id="unsubscribePush"><i class="fas fa-bell-slash"></i> Unsubscribe Notification</a></li>
+        <li id="nav-logout" style="display: none;"><a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+      </ul>
+    </nav>
+  </header>  
+  
+  <!-- Fixed: Add the app container that your JavaScript is looking for -->
+  <main id="main-content">
+    <div id="app"></div>
+  </main>
+  
+  <!-- Footer placeholder -->
+  <footer id="footer" role="contentinfo"></footer>
+  
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <!-- Main App Script -->
+  <script type="module" src="./src/index.js"></script>
+</body>
+</html>
