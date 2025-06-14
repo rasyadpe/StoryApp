@@ -1,1 +1,2 @@
 MAP_SERVICE_API_KEY = NFMtcNr8BqC0FUQTtw5p
+APP_URL = https://melodious-peony-4012be.netlify.app/#/
