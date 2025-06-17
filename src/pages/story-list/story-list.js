@@ -76,9 +76,11 @@ export default function StoryListPage() {
                 })}
               </span>
               <button 
+                type="button"
                 class="btn-favorite ${isFavorited ? 'active' : ''}"
                 data-story-id="${story.id}"
                 aria-label="${isFavorited ? 'Remove from favorites' : 'Add to favorites'}"
+                ontouchstart="event.stopPropagation();"
               >
                 <i class="fas fa-heart"></i>
               </button>
@@ -90,19 +92,24 @@ export default function StoryListPage() {
     storyList.innerHTML = storiesHTML.join('');
 
     // Add event listeners for favorite buttons
-    storyList.addEventListener('click', async (e) => {
+    const handleFavoriteClick = async (e) => {
       const favoriteButton = e.target.closest('.btn-favorite');
       if (!favoriteButton) return;
 
-      // Prevent the click from bubbling up to the story card
+      // Prevent any default behavior and event bubbling
       e.preventDefault();
       e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      // Disable the button temporarily to prevent double clicks
+      favoriteButton.disabled = true;
 
       const storyId = favoriteButton.dataset.storyId;
       const story = stories.find(s => s.id === storyId);
       
       if (!story) {
         showError('Story not found');
+        favoriteButton.disabled = false;
         return;
       }
 
@@ -123,7 +130,17 @@ export default function StoryListPage() {
       } catch (error) {
         showError('Failed to update favorites');
         console.error('Error updating favorites:', error);
+      } finally {
+        // Re-enable the button
+        favoriteButton.disabled = false;
       }
+    };
+
+    // Add both click and touch event listeners
+    const favoriteButtons = storyList.querySelectorAll('.btn-favorite');
+    favoriteButtons.forEach(button => {
+      button.addEventListener('click', handleFavoriteClick);
+      button.addEventListener('touchend', handleFavoriteClick);
     });
   }
 }

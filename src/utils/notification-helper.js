@@ -13,23 +13,40 @@ export function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
+export const checkNotificationSupport = () => {
+  const support = {
+    notifications: 'Notification' in window,
+    pushManager: 'PushManager' in window,
+    serviceWorker: 'serviceWorker' in navigator,
+  };
+  
+  return {
+    ...support,
+    isSupported: support.notifications && support.pushManager && support.serviceWorker
+  };
+};
+
 async function subscribePushNotification() {
-  if (!('serviceWorker' in navigator)) {
-    console.warn('Service Worker not supported');
-    return;
-  }
-  if (!('PushManager' in window)) {
-    console.warn('Push API not supported');
-    return;
+  const support = checkNotificationSupport();
+  
+  if (!support.isSupported) {
+    console.warn('Push notifications are not fully supported', support);
+    return null;
   }
 
   try {
     const registration = await navigator.serviceWorker.ready;
     console.log('Service Worker ready, attempting to subscribe...');
+
+    // First check if we already have a subscription
+    const existingSubscription = await registration.pushManager.getSubscription();
+    if (existingSubscription) {
+      console.log('Already subscribed to push notifications');
+      return existingSubscription;
+    }
     
     // Convert VAPID key to Uint8Array
     const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
-    console.log('Application server key converted:', applicationServerKey);
 
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
@@ -40,6 +57,9 @@ async function subscribePushNotification() {
     return subscription;
   } catch (error) {
     console.error('Failed to subscribe to push notification:', error);
+    if (error.name === 'NotAllowedError') {
+      console.warn('Push notification permission denied');
+    }
     return null;
   }
 }
@@ -68,14 +88,21 @@ async function unsubscribePushNotification() {
 export { subscribePushNotification, unsubscribePushNotification };
 
 export const requestNotificationPermission = async () => {
-  try {
-    if (!('Notification' in window)) {
-      console.log('This browser does not support notifications');
-      return false;
-    }
+  const support = checkNotificationSupport();
+  
+  if (!support.isSupported) {
+    console.log('Push notifications are not supported on this device/browser');
+    return false;
+  }
 
+  try {
     const permission = await Notification.requestPermission();
-    return permission === 'granted';
+    if (permission === 'granted') {
+      // Try to subscribe to push notifications
+      const subscription = await subscribePushNotification();
+      return !!subscription;
+    }
+    return false;
   } catch (error) {
     console.error('Error requesting notification permission:', error);
     return false;

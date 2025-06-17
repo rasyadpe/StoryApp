@@ -1163,56 +1163,52 @@ a {
   pointer-events: none; /* Prevents event bubbling issues */
 }
 
-/* Feedback Messages */
-.success-message,
-.error-message {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  padding: 1rem 2rem;
-  border-radius: 4px;
-  animation: slideIn 0.3s ease-out;
-  z-index: 1000;
-}
-
-.success-message {
-  background-color: #4caf50;
-  color: white;
-}
-
-.error-message {
-  background-color: #f44336;
-  color: white;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-.story-card__link {
-  text-decoration: none;
-  color: inherit;
-  display: block;
-  height: 100%;
-}
-
-.story-card__link:hover .story-card__image {
-  transform: scale(1.05);
-}
-
-.story-card__link:hover .story-card__title {
-  color: var(--primary-color);
-}
-
-/* Ensure favorite button still works */
+/* Favorite button improvements */
 .btn-favorite {
+  border: none;
+  background: transparent;
+  color: #ccc;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   position: relative;
   z-index: 2;
+}
+
+.btn-favorite:active {
+  transform: scale(0.95);
+}
+
+.btn-favorite.active {
+  color: #ff4b4b;
+}
+
+.btn-favorite:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Mobile improvements */
+@media (max-width: 768px) {
+  .btn-favorite {
+    width: 44px;
+    height: 44px;
+    padding: 12px;
+  }
+
+  .story-card__meta {
+    padding: 8px;
+  }
+
+  .btn-favorite i {
+    font-size: 1.2rem;
+  }
 }
