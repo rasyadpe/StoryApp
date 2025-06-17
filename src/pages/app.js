@@ -5,9 +5,15 @@ import {
   VAPID_PUBLIC_KEY,
   urlBase64ToUint8Array 
 } from '../utils/notification-helper';
+import { initDB } from '../utils/indexed-db-helper';
 
 class App {
   constructor() {
+    // Initialize IndexedDB
+    initDB().catch(error => {
+      console.error('Failed to initialize IndexedDB:', error);
+    });
+
     // Jika hash adalah #main-content saat load, redirect ke #/ dan fokus ke main-content
     if (window.location.hash === '#main-content') {
       window.location.hash = '#/';

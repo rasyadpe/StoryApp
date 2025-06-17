@@ -1,9 +1,14 @@
-import { addToFavorites, removeFromFavorites, isStoryFavorited } from '../../utils/indexed-db-helper';
+import { addToFavorites, removeFromFavorites, isStoryFavorited, initDB } from '../../utils/indexed-db-helper';
 import { showSuccess, showError } from '../../utils/swalHelper';
 import StoryPresenter from '../../presenters/storyPresenter';
 
 export default function StoryListPage() {
   const storyPresenter = new StoryPresenter();
+  
+  // Initialize IndexedDB first
+  initDB().catch(error => {
+    console.error('Failed to initialize IndexedDB:', error);
+  });
   
   document.querySelector('#main-content').innerHTML = `
     <div class="container">

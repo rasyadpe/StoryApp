@@ -7,17 +7,16 @@ const STORES = {
 const DB_VERSION = 1;
 
 let db = null;
+let dbInitPromise = null;
 
-export const openDB = () => {
-  return new Promise((resolve, reject) => {
-    if (db) {
-      resolve(db);
-      return;
-    }
-
+export const initDB = () => {
+  if (dbInitPromise) return dbInitPromise;
+  
+  dbInitPromise = new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onerror = () => {
+      console.error('Error opening database:', request.error);
       reject(request.error);
     };
 
@@ -55,6 +54,20 @@ export const openDB = () => {
       resolve(db);
     };
   });
+
+  return dbInitPromise;
+};
+
+export const openDB = async () => {
+  if (db) return db;
+  
+  try {
+    db = await initDB();
+    return db;
+  } catch (error) {
+    console.error('Failed to open database:', error);
+    throw error;
+  }
 };
 
 // Add a story to favorites
@@ -118,8 +131,18 @@ export const getFavoriteStories = async () => {
 
 // Check if a story is favorited
 export const isStoryFavorited = async (storyId) => {
+  if (!storyId) return false;
+  
   try {
     const database = await openDB();
+    
+    // Verify the store exists
+    if (!database.objectStoreNames.contains(STORES.FAVORITES)) {
+      console.warn('Favorites store not found, initializing database...');
+      await initDB();
+      return false;
+    }
+    
     const transaction = database.transaction([STORES.FAVORITES], 'readonly');
     const store = transaction.objectStore(STORES.FAVORITES);
     
