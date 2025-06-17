@@ -2,6 +2,20 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import App from './pages/app';
 import "./styles/main.css"; // Import main CSS styles
+import { registerSW } from 'virtual:pwa-register';
+
+// Register service worker
+const updateSW = registerSW({
+  onNeedRefresh() {
+    // Show a prompt to user about new content being available
+    if (confirm('New content available. Reload?')) {
+      updateSW(true);
+    }
+  },
+  onOfflineReady() {
+    console.log('App ready to work offline');
+  },
+});
 
 // Global error handler
 window.addEventListener('error', (event) => {
@@ -48,22 +62,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       footerContainer.setAttribute('role', 'contentinfo');
       footerContainer.style.width = '100%';
       document.body.appendChild(footerContainer);
-    }
-
-    // Register service worker first
-    if ('serviceWorker' in navigator) {
-      try {
-        const registration = await navigator.serviceWorker.register('/sw.js', {
-          scope: '/'
-        });
-        
-        // Check if push notifications are supported
-        if ('PushManager' in window) {
-        } else {
-        }
-      } catch (registrationError) {
-        console.error('ServiceWorker registration failed:', registrationError);
-      }
     }
 
     // Initialize Header and Footer after DOM is ready
