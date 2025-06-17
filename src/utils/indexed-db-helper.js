@@ -9,101 +9,108 @@ const DB_VERSION = 1;
 let db = null;
 let dbInitPromise = null;
 
-const checkIndexedDBSupport = () => {
-  const isSupportedAndAccessible = () => {
-    try {
-      // Early return for browsers that don't support IndexedDB
-      if (!window.indexedDB) {
-        console.warn('IndexedDB is not supported by this browser');
-        return false;
-      }
+const createStores = (database) => {
+  // Create favorites store if it doesn't exist
+  if (!database.objectStoreNames.contains(STORES.FAVORITES)) {
+    database.createObjectStore(STORES.FAVORITES, { 
+      keyPath: 'id',
+      autoIncrement: false
+    });
+  }
 
-      // Additional check for private browsing mode in Safari
-      if (window.webkitStorageInfo || window.webkitIndexedDB) {
-        const storage = window.localStorage;
-        storage.setItem('test', '1');
-        storage.removeItem('test');
-      }
+  // Create stories store if it doesn't exist
+  if (!database.objectStoreNames.contains(STORES.STORIES)) {
+    const storyStore = database.createObjectStore(STORES.STORIES, { 
+      keyPath: 'id',
+      autoIncrement: false
+    });
+    storyStore.createIndex('timestamp', 'createdAt', { unique: false });
+  }
 
-      return true;
-    } catch (e) {
-      console.warn('IndexedDB might be blocked or unavailable:', e);
-      return false;
-    }
-  };
+  // Create user data store if it doesn't exist
+  if (!database.objectStoreNames.contains(STORES.USER_DATA)) {
+    database.createObjectStore(STORES.USER_DATA, { 
+      keyPath: 'key',
+      autoIncrement: false
+    });
+  }
+};
 
-  return isSupportedAndAccessible();
+const validateDatabase = (database) => {
+  const stores = [STORES.FAVORITES, STORES.STORIES, STORES.USER_DATA];
+  const missingStores = stores.filter(store => !database.objectStoreNames.contains(store));
+  
+  if (missingStores.length > 0) {
+    console.warn('Missing stores detected:', missingStores);
+    throw new Error('Database schema is incomplete');
+  }
+  
+  return true;
 };
 
 export const initDB = () => {
-  // Return existing promise if initialization is in progress
-  if (dbInitPromise) return dbInitPromise;
-
-  // Check IndexedDB support first
-  if (!checkIndexedDBSupport()) {
-    dbInitPromise = Promise.reject(new Error('IndexedDB is not supported or blocked'));
+  if (dbInitPromise) {
     return dbInitPromise;
   }
-  
+
   dbInitPromise = new Promise((resolve, reject) => {
     try {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-      request.onerror = (event) => {
-        console.error('Database error:', event.target.error);
-        reject(new Error('Failed to open database: ' + event.target.error));
+      const request = indexedDB.deleteDatabase(DB_NAME);
+      
+      request.onerror = () => {
+        console.error('Could not delete database');
       };
 
-      request.onblocked = (event) => {
-        console.warn('Database blocked:', event);
-        reject(new Error('Database blocked. Please close other tabs with this site open'));
-      };
+      request.onsuccess = () => {
+        console.log('Database deleted successfully');
+        
+        // Now create a new database
+        const openRequest = indexedDB.open(DB_NAME, DB_VERSION);
 
-      request.onupgradeneeded = (event) => {
-        console.log('Database upgrade needed');
-        const database = event.target.result;
-
-        // Create favorites store if it doesn't exist
-        if (!database.objectStoreNames.contains(STORES.FAVORITES)) {
-          database.createObjectStore(STORES.FAVORITES, { 
-            keyPath: 'id',
-            autoIncrement: false
-          });
-        }
-
-        // Create stories store if it doesn't exist
-        if (!database.objectStoreNames.contains(STORES.STORIES)) {
-          const storyStore = database.createObjectStore(STORES.STORIES, { 
-            keyPath: 'id',
-            autoIncrement: false
-          });
-          storyStore.createIndex('timestamp', 'createdAt', { unique: false });
-        }
-
-        // Create user data store if it doesn't exist
-        if (!database.objectStoreNames.contains(STORES.USER_DATA)) {
-          database.createObjectStore(STORES.USER_DATA, { 
-            keyPath: 'key',
-            autoIncrement: false
-          });
-        }
-      };
-
-      request.onsuccess = (event) => {
-        db = event.target.result;
-
-        // Handle connection errors
-        db.onerror = (event) => {
+        openRequest.onerror = (event) => {
           console.error('Database error:', event.target.error);
+          reject(event.target.error);
         };
 
-        // Handle when db is blocked by other tabs
-        db.onversionchange = (event) => {
-          db.close();
-          console.log('Database is outdated, please reload the page.');
+        openRequest.onupgradeneeded = (event) => {
+          console.log('Database upgrade needed');
+          const database = event.target.result;
+          createStores(database);
         };
 
-        resolve(db);
+        openRequest.onsuccess = (event) => {
+          db = event.target.result;
+          
+          try {
+            validateDatabase(db);
+            console.log('Database initialized successfully');
+            resolve(db);
+          } catch (error) {
+            console.error('Database validation failed:', error);
+            
+            // Close the invalid database connection
+            db.close();
+            
+            // Try to create a new database with a higher version
+            const retryRequest = indexedDB.open(DB_NAME, DB_VERSION + 1);
+            
+            retryRequest.onupgradeneeded = (event) => {
+              const database = event.target.result;
+              createStores(database);
+            };
+            
+            retryRequest.onsuccess = (event) => {
+              db = event.target.result;
+              console.log('Database recreated successfully');
+              resolve(db);
+            };
+            
+            retryRequest.onerror = (event) => {
+              console.error('Failed to recreate database:', event.target.error);
+              reject(event.target.error);
+            };
+          }
+        };
       };
     } catch (error) {
       console.error('Error during database initialization:', error);
@@ -118,17 +125,16 @@ export const openDB = async () => {
   try {
     if (!db) {
       db = await initDB();
-    } else {
-      // Check if the connection is still alive
-      try {
-        // Try a simple operation
-        const transaction = db.transaction([STORES.FAVORITES], 'readonly');
-        transaction.abort(); // Clean up the test transaction
-      } catch (e) {
-        console.log('Database connection lost, reconnecting...');
-        db = await initDB();
-      }
     }
+    
+    // Verify database is valid
+    try {
+      validateDatabase(db);
+    } catch (error) {
+      console.warn('Invalid database detected, reinitializing...');
+      db = await initDB();
+    }
+    
     return db;
   } catch (error) {
     console.error('Failed to open database:', error);
@@ -136,108 +142,120 @@ export const openDB = async () => {
   }
 };
 
-// Add a story to favorites with retry mechanism
-export const addToFavorites = async (story, retryCount = 3) => {
-  for (let attempt = 1; attempt <= retryCount; attempt++) {
-    try {
-      const database = await openDB();
-      return await new Promise((resolve, reject) => {
-        const transaction = database.transaction([STORES.FAVORITES], 'readwrite');
-        
-        transaction.oncomplete = () => resolve(true);
-        transaction.onerror = () => reject(transaction.error);
-        
-        const store = transaction.objectStore(STORES.FAVORITES);
-        const storyToSave = {
-          ...story,
-          favoritedAt: new Date().toISOString()
-        };
-        
-        store.put(storyToSave);
-      });
-    } catch (error) {
-      console.error(`Error adding to favorites (attempt ${attempt}/${retryCount}):`, error);
-      if (attempt === retryCount) return false;
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
-    }
-  }
-  return false;
-};
-
-// Remove a story from favorites with retry mechanism
-export const removeFromFavorites = async (storyId, retryCount = 3) => {
-  for (let attempt = 1; attempt <= retryCount; attempt++) {
-    try {
-      const database = await openDB();
-      return await new Promise((resolve, reject) => {
-        const transaction = database.transaction([STORES.FAVORITES], 'readwrite');
-        
-        transaction.oncomplete = () => resolve(true);
-        transaction.onerror = () => reject(transaction.error);
-        
-        const store = transaction.objectStore(STORES.FAVORITES);
-        store.delete(storyId);
-      });
-    } catch (error) {
-      console.error(`Error removing from favorites (attempt ${attempt}/${retryCount}):`, error);
-      if (attempt === retryCount) return false;
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
-    }
-  }
-  return false;
-};
-
-// Get all favorite stories with retry mechanism
-export const getFavoriteStories = async (retryCount = 3) => {
-  for (let attempt = 1; attempt <= retryCount; attempt++) {
-    try {
-      const database = await openDB();
-      return await new Promise((resolve, reject) => {
-        const transaction = database.transaction([STORES.FAVORITES], 'readonly');
-        const store = transaction.objectStore(STORES.FAVORITES);
-        
-        const request = store.getAll();
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      });
-    } catch (error) {
-      console.error(`Error getting favorite stories (attempt ${attempt}/${retryCount}):`, error);
-      if (attempt === retryCount) return [];
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-    }
-  }
-  return [];
-};
-
-// Check if a story is favorited with retry mechanism
-export const isStoryFavorited = async (storyId, retryCount = 3) => {
-  if (!storyId) return false;
-  
-  for (let attempt = 1; attempt <= retryCount; attempt++) {
-    try {
-      const database = await openDB();
+// Add a story to favorites
+export const addToFavorites = async (story) => {
+  try {
+    const database = await openDB();
+    
+    // Double check that the store exists
+    if (!database.objectStoreNames.contains(STORES.FAVORITES)) {
+      console.warn('Favorites store not found, reinitializing database...');
+      database = await initDB();
       
       if (!database.objectStoreNames.contains(STORES.FAVORITES)) {
-        console.warn('Favorites store not found, initializing database...');
-        await initDB();
-        return false;
+        throw new Error('Failed to create favorites store');
       }
-      
-      return await new Promise((resolve, reject) => {
-        const transaction = database.transaction([STORES.FAVORITES], 'readonly');
-        const store = transaction.objectStore(STORES.FAVORITES);
-        
-        const request = store.get(storyId);
-        request.onsuccess = () => resolve(!!request.result);
-        request.onerror = () => reject(request.error);
-      });
-    } catch (error) {
-      console.error(`Error checking favorite status (attempt ${attempt}/${retryCount}):`, error);
-      if (attempt === retryCount) return false;
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
     }
+    
+    return await new Promise((resolve, reject) => {
+      const transaction = database.transaction([STORES.FAVORITES], 'readwrite');
+      
+      transaction.oncomplete = () => resolve(true);
+      transaction.onerror = () => reject(transaction.error);
+      
+      const store = transaction.objectStore(STORES.FAVORITES);
+      const storyToSave = {
+        ...story,
+        favoritedAt: new Date().toISOString()
+      };
+      
+      store.put(storyToSave);
+    });
+  } catch (error) {
+    console.error('Error adding to favorites:', error);
+    return false;
   }
-  return false;
+};
+
+// Check if a story is favorited
+export const isStoryFavorited = async (storyId) => {
+  if (!storyId) return false;
+  
+  try {
+    const database = await openDB();
+    
+    // Verify the store exists
+    if (!database.objectStoreNames.contains(STORES.FAVORITES)) {
+      console.warn('Favorites store not found, reinitializing database...');
+      database = await initDB();
+      return false;
+    }
+    
+    return await new Promise((resolve, reject) => {
+      const transaction = database.transaction([STORES.FAVORITES], 'readonly');
+      const store = transaction.objectStore(STORES.FAVORITES);
+      
+      const request = store.get(storyId);
+      request.onsuccess = () => resolve(!!request.result);
+      request.onerror = () => reject(request.error);
+    });
+  } catch (error) {
+    console.error('Error checking favorite status:', error);
+    return false;
+  }
+};
+
+// Remove a story from favorites
+export const removeFromFavorites = async (storyId) => {
+  try {
+    const database = await openDB();
+    
+    // Verify the store exists
+    if (!database.objectStoreNames.contains(STORES.FAVORITES)) {
+      console.warn('Favorites store not found, reinitializing database...');
+      database = await initDB();
+      return false;
+    }
+    
+    return await new Promise((resolve, reject) => {
+      const transaction = database.transaction([STORES.FAVORITES], 'readwrite');
+      
+      transaction.oncomplete = () => resolve(true);
+      transaction.onerror = () => reject(transaction.error);
+      
+      const store = transaction.objectStore(STORES.FAVORITES);
+      store.delete(storyId);
+    });
+  } catch (error) {
+    console.error('Error removing from favorites:', error);
+    return false;
+  }
+};
+
+// Get all favorite stories
+export const getFavoriteStories = async () => {
+  try {
+    const database = await openDB();
+    
+    // Verify the store exists
+    if (!database.objectStoreNames.contains(STORES.FAVORITES)) {
+      console.warn('Favorites store not found, reinitializing database...');
+      database = await initDB();
+      return [];
+    }
+    
+    return await new Promise((resolve, reject) => {
+      const transaction = database.transaction([STORES.FAVORITES], 'readonly');
+      const store = transaction.objectStore(STORES.FAVORITES);
+      
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    });
+  } catch (error) {
+    console.error('Error getting favorite stories:', error);
+    return [];
+  }
 };
 
 // Get favorite count with retry mechanism
