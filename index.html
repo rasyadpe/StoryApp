@@ -53,32 +53,40 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <!-- Main App Script -->
   <script type="module" src="./src/index.js"></script>
-  <!-- Modern Hamburger Menu Script -->
+  <!-- Modern Hamburger Menu Script (Fix: wait DOMContentLoaded, safer event delegation) -->
   <script>
-    const hamburgerBtn = document.getElementById('hamburgerBtn');
-    const menuItems = document.getElementById('menu-items');
-    
-    function closeMenu() {
-      hamburgerBtn.classList.remove('active');
-      menuItems.classList.remove('active');
-      hamburgerBtn.setAttribute('aria-expanded', 'false');
-    }
-    
-    hamburgerBtn.addEventListener('click', function() {
-      const expanded = hamburgerBtn.getAttribute('aria-expanded') === 'true';
-      hamburgerBtn.classList.toggle('active');
-      menuItems.classList.toggle('active');
-      hamburgerBtn.setAttribute('aria-expanded', !expanded);
-    });
-    // Close menu on click menu item (mobile UX)
-    menuItems.addEventListener('click', function(e) {
-      if(e.target.tagName === 'A') {
-        closeMenu();
+    document.addEventListener('DOMContentLoaded', function() {
+      const hamburgerBtn = document.getElementById('hamburgerBtn');
+      const menuItems = document.getElementById('menu-items');
+      if (!hamburgerBtn || !menuItems) return;
+      function closeMenu() {
+        hamburgerBtn.classList.remove('active');
+        menuItems.classList.remove('active');
+        hamburgerBtn.setAttribute('aria-expanded', 'false');
       }
-    });
-    // Optional: close menu on resize if > 768px
-    window.addEventListener('resize', function() {
-      if(window.innerWidth > 768) closeMenu();
+      hamburgerBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const expanded = hamburgerBtn.getAttribute('aria-expanded') === 'true';
+        hamburgerBtn.classList.toggle('active');
+        menuItems.classList.toggle('active');
+        hamburgerBtn.setAttribute('aria-expanded', !expanded);
+      });
+      // Close menu on click menu item (mobile UX)
+      menuItems.addEventListener('click', function(e) {
+        if(e.target.closest('a')) {
+          closeMenu();
+        }
+      });
+      // Optional: close menu on resize if > 768px
+      window.addEventListener('resize', function() {
+        if(window.innerWidth > 768) closeMenu();
+      });
+      // Optional: close menu if click outside
+      document.body.addEventListener('click', function(e) {
+        if (!menuItems.contains(e.target) && !hamburgerBtn.contains(e.target)) {
+          closeMenu();
+        }
+      });
     });
   </script>
 </body>

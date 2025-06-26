@@ -12,6 +12,44 @@ class Header {
     window.addEventListener("hashchange", () => {
       this.updateMenu();
     });
+
+    // Hamburger menu logic
+    document.addEventListener('DOMContentLoaded', Header._initHamburgerMenu);
+    // In case DOMContentLoaded already fired (SPA), call directly
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      Header._initHamburgerMenu();
+    }
+  }
+
+  static _initHamburgerMenu() {
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const menuItems = document.getElementById('menu-items');
+    if (!hamburgerBtn || !menuItems) return;
+    function closeMenu() {
+      hamburgerBtn.classList.remove('active');
+      menuItems.classList.remove('active');
+      hamburgerBtn.setAttribute('aria-expanded', 'false');
+    }
+    hamburgerBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const expanded = hamburgerBtn.getAttribute('aria-expanded') === 'true';
+      hamburgerBtn.classList.toggle('active');
+      menuItems.classList.toggle('active');
+      hamburgerBtn.setAttribute('aria-expanded', !expanded);
+    });
+    menuItems.addEventListener('click', function(e) {
+      if(e.target.closest('a')) {
+        closeMenu();
+      }
+    });
+    window.addEventListener('resize', function() {
+      if(window.innerWidth > 768) closeMenu();
+    });
+    document.body.addEventListener('click', function(e) {
+      if (!menuItems.contains(e.target) && !hamburgerBtn.contains(e.target)) {
+        closeMenu();
+      }
+    });
   }
 
   static async updateMenu() {
