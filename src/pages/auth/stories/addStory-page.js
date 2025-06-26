@@ -135,17 +135,31 @@ export default function AddStoryPage() {
       const videoDevices = devices.filter(device => device.kind === 'videoinput');
       
       if (videoDevices.length > 0) {
-        cameraSelect.innerHTML = '<option value="">Select Camera</option>' +
-          videoDevices.map(device => 
-            `<option value="${device.deviceId}">${device.label || `Camera ${cameraSelect.length + 1}`}</option>`
-          ).join('');
+        // Coba deteksi kamera depan/belakang dari label
+        cameraSelect.innerHTML = '<option value="">Pilih Kamera</option>' +
+          videoDevices.map((device, idx) => {
+            let label = device.label;
+            if (!label) {
+              // Jika label belum tersedia, minta user izinkan akses kamera
+              label = `Kamera ${idx + 1}`;
+            } else {
+              // Deteksi kata depan/belakang dari label
+              const lower = label.toLowerCase();
+              if (lower.includes('back') || lower.includes('belakang') || lower.includes('rear')) {
+                label += ' (Belakang)';
+              } else if (lower.includes('front') || lower.includes('depan')) {
+                label += ' (Depan)';
+              }
+            }
+            return `<option value="${device.deviceId}">${label}</option>`;
+          }).join('');
         cameraSelect.style.display = 'block';
       }
       
       return videoDevices;
     } catch (error) {
       console.error('Error getting camera devices:', error);
-      showError('Failed to get camera devices');
+      showError('Gagal mendapatkan daftar kamera. Pastikan Anda sudah mengizinkan akses kamera.');
       return [];
     }
   }
