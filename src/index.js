@@ -90,4 +90,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       </div>
     `;
   }
+
+  // Hamburger menu logic
+  const hamburgerBtn = document.getElementById('hamburgerBtn');
+  const menuItems = document.getElementById('menu-items');
+
+  if (hamburgerBtn && menuItems) {
+    hamburgerBtn.addEventListener('click', function () {
+      const expanded = hamburgerBtn.getAttribute('aria-expanded') === 'true';
+      hamburgerBtn.setAttribute('aria-expanded', !expanded);
+      hamburgerBtn.classList.toggle('active');
+      menuItems.classList.toggle('active');
+    });
+    // Optional: close menu when clicking outside (mobile UX)
+    document.addEventListener('click', function (e) {
+      if (!hamburgerBtn.contains(e.target) && !menuItems.contains(e.target)) {
+        hamburgerBtn.classList.remove('active');
+        menuItems.classList.remove('active');
+        hamburgerBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
 });

@@ -19,18 +19,26 @@
 <body>
   <a href="#main-content" class="skip-link">Lewati ke konten</a>
   <header id="header" class="header">
-    <nav>
-      <ul class="menu-items">
-        <li><a href="#/"><i class="fas fa-home"></i>Home</a></li>
-        <li><a href="#/stories"><i class="fas fa-book"></i> Stories</a></li>
-        <li id="nav-add-story" style="display: none;"><a href="#/stories/add"><i class="fas fa-pencil-alt"></i> Add Story</a></li>
-        <li id="nav-login" style="display: none;"><a href="#/login"><i class="fas fa-sign-in-alt"></i> Login</a></li>
-        <li id="nav-register" style="display: none;"><a href="#/register"><i class="fas fa-user-plus"></i> Register</a></li>
-        <li id="nav-subscribe" style="display: none;"><a href="#" id="subscribePush"><i class="fas fa-bell"></i> Subscribe Notification</a></li>
-        <li id="nav-unsubscribe" style="display: none;"><a href="#" id="unsubscribePush"><i class="fas fa-bell-slash"></i> Unsubscribe Notification</a></li>
-        <li id="nav-logout" style="display: none;"><a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-      </ul>
-    </nav>
+    <div class="header-container">
+      <div class="logo">Story App</div>
+      <button class="hamburger" id="hamburgerBtn" aria-label="Buka menu navigasi" aria-expanded="false" aria-controls="menu-items">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <nav>
+        <ul class="menu-items" id="menu-items" role="menu">
+          <li><a href="#/" role="menuitem"><i class="fas fa-home"></i>Home</a></li>
+          <li><a href="#/stories" role="menuitem"><i class="fas fa-book"></i> Stories</a></li>
+          <li id="nav-add-story" style="display: none;"><a href="#/stories/add" role="menuitem"><i class="fas fa-pencil-alt"></i> Add Story</a></li>
+          <li id="nav-login" style="display: none;"><a href="#/login" role="menuitem"><i class="fas fa-sign-in-alt"></i> Login</a></li>
+          <li id="nav-register" style="display: none;"><a href="#/register" role="menuitem"><i class="fas fa-user-plus"></i> Register</a></li>
+          <li id="nav-subscribe" style="display: none;"><a href="#" id="subscribePush" role="menuitem"><i class="fas fa-bell"></i> Subscribe Notification</a></li>
+          <li id="nav-unsubscribe" style="display: none;"><a href="#" id="unsubscribePush" role="menuitem"><i class="fas fa-bell-slash"></i> Unsubscribe Notification</a></li>
+          <li id="nav-logout" style="display: none;"><a href="#" id="logoutLink" role="menuitem"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+        </ul>
+      </nav>
+    </div>
   </header>  
   
   <!-- Fixed: Add the app container that your JavaScript is looking for -->
@@ -45,5 +53,33 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <!-- Main App Script -->
   <script type="module" src="./src/index.js"></script>
+  <!-- Modern Hamburger Menu Script -->
+  <script>
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const menuItems = document.getElementById('menu-items');
+    
+    function closeMenu() {
+      hamburgerBtn.classList.remove('active');
+      menuItems.classList.remove('active');
+      hamburgerBtn.setAttribute('aria-expanded', 'false');
+    }
+    
+    hamburgerBtn.addEventListener('click', function() {
+      const expanded = hamburgerBtn.getAttribute('aria-expanded') === 'true';
+      hamburgerBtn.classList.toggle('active');
+      menuItems.classList.toggle('active');
+      hamburgerBtn.setAttribute('aria-expanded', !expanded);
+    });
+    // Close menu on click menu item (mobile UX)
+    menuItems.addEventListener('click', function(e) {
+      if(e.target.tagName === 'A') {
+        closeMenu();
+      }
+    });
+    // Optional: close menu on resize if > 768px
+    window.addEventListener('resize', function() {
+      if(window.innerWidth > 768) closeMenu();
+    });
+  </script>
 </body>
 </html>
